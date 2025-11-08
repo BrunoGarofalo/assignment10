@@ -1,9 +1,11 @@
 import pytest
 import logging
-from app.models.user import User
-from app.schemas.user import UserResponse, Token
-from tests.conftest import create_fake_user
+from faker import Faker
 from sqlalchemy.orm import Session
+from app.models.user import User
+
+# Initialize Faker
+fake = Faker()
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -15,12 +17,21 @@ if not logger.handlers:
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
+
+# Helper to generate fake user data
+def create_fake_user():
+    return {
+        "username": fake.user_name(),
+        "email": fake.email(),
+        "password": "Password123"  # valid password according to PasswordMixin
+    }
+
+
 # ======================================================================================
 # User Registration Tests
 # ======================================================================================
 
-def test_register_user_success(db_session):
-    """Test creating a new user successfully."""
+def test_register_user_success(db_session: Session):
     user_data = create_fake_user()
     logger.debug(f"Registering user: {user_data}")
     user = User.register_user(db_session, user_data)
@@ -33,23 +44,53 @@ def test_register_user_success(db_session):
     assert user.password_hash != user_data["password"]
 
 
-def test_register_user_duplicate(db_session):
-    """Test that registering a user with duplicate username/email fails."""
-    user_data = create_fake_user()
-    logger.debug("Registering first user for duplicate test")
-    user1 = User.register_user(db_session, user_data)
+def test_register_user_duplicate_username(db_session: Session):
+    user_data1 = create_fake_user()
+    user1 = User.register_user(db_session, user_data1)
     db_session.commit()
 
-    logger.debug("Attempting duplicate registration")
+    # Duplicate username, different email
+    user_data2 = create_fake_user()
+    user_data2["username"] = user_data1["username"]
+    user_data2["email"] = fake.email()
+
     with pytest.raises(ValueError, match="Username or email already exists"):
-        User.register_user(db_session, user_data)
+        User.register_user(db_session, user_data2)
+
+
+def test_register_user_duplicate_email(db_session: Session):
+    user_data1 = create_fake_user()
+    user1 = User.register_user(db_session, user_data1)
+    db_session.commit()
+
+    # Duplicate email, different username
+    user_data2 = create_fake_user()
+    user_data2["username"] = fake.user_name()
+    user_data2["email"] = user_data1["email"]
+
+    with pytest.raises(ValueError, match="Username or email already exists"):
+        User.register_user(db_session, user_data2)
+
+
+def test_register_user_unique_username_and_email(db_session: Session):
+    user_data1 = create_fake_user()
+    user1 = User.register_user(db_session, user_data1)
+    db_session.commit()
+
+    user_data2 = create_fake_user()
+    # Ensure both username and email are unique
+    user_data2["username"] = fake.user_name()
+    user_data2["email"] = fake.email()
+
+    user2 = User.register_user(db_session, user_data2)
+    db_session.commit()
+
+    assert user2.username != user1.username
+    assert user2.email != user1.email
 
 
 def test_register_user_validation_error(db_session: Session):
-    """Test that register_user raises a ValueError when Pydantic validation fails."""
-    invalid_user_data = {
-        "password": "ValidPassw1"
-    }
+    invalid_user_data = {"password": "ValidPassw1"}
     logger.debug(f"Testing validation error with data: {invalid_user_data}")
 
     with pytest.raises(ValueError) as exc_info:
@@ -63,16 +104,12 @@ def test_register_user_validation_error(db_session: Session):
 # User Authentication Tests
 # ======================================================================================
 
-def test_authenticate_user_success(db_session):
-    """Test authenticating a registered user."""
+def test_authenticate_user_success(db_session: Session):
     user_data = create_fake_user()
-    logger.debug(f"Registering user for auth test: {user_data}")
     user = User.register_user(db_session, user_data)
     db_session.commit()
 
-    logger.debug(f"Authenticating user: {user_data['username']}")
     result = User.authenticate_user(db_session, user_data["username"], user_data["password"])
-    logger.debug(f"Authentication result: {result}")
 
     assert result is not None
     assert "access_token" in result
@@ -80,60 +117,48 @@ def test_authenticate_user_success(db_session):
     assert result["user"]["email"] == user_data["email"]
 
 
-def test_authenticate_user_failure(db_session):
-    """Test authentication failure for non-registered or wrong password."""
+def test_authenticate_user_failure_wrong_password(db_session: Session):
     user_data = create_fake_user()
-    
-    logger.debug(f"Authenticating non-registered user: {user_data['username']}")
-    result = User.authenticate_user(db_session, user_data["username"], user_data["password"])
-    assert result is None
-
-    logger.debug("Registering user for wrong password test")
-    user = User.register_user(db_session, user_data)
+    User.register_user(db_session, user_data)
     db_session.commit()
 
-    logger.debug("Authenticating with wrong password")
-    result_wrong_password = User.authenticate_user(db_session, user_data["username"], "WrongPass123")
-    assert result_wrong_password is None
+    result = User.authenticate_user(db_session, user_data["username"], "WrongPass123")
+    assert result is None
+
+
+def test_authenticate_user_failure_nonexistent_user(db_session: Session):
+    result = User.authenticate_user(db_session, fake.user_name(), "AnyPassword1")
+    assert result is None
 
 
 # ======================================================================================
 # Token Tests
 # ======================================================================================
 
-def test_access_token_generation(db_session):
-    """Test JWT token creation and decoding."""
+def test_access_token_generation(db_session: Session):
     user_data = create_fake_user()
-    logger.debug(f"Registering user for token test: {user_data}")
     user = User.register_user(db_session, user_data)
     db_session.commit()
 
     token_str = User.generate_access_token(str(user.id))
     decoded_id = User.decode_access_token(token_str)
-    logger.debug(f"Token: {token_str}, Decoded ID: {decoded_id}")
 
     assert decoded_id == user.id
 
 
 def test_decode_access_token_invalid():
-    """Test that decode_access_token returns None for invalid JWT tokens."""
     invalid_token = "this.is.not.a.valid.token"
-    logger.debug(f"Decoding invalid token: {invalid_token}")
     result = User.decode_access_token(invalid_token)
     assert result is None
 
 
 def test_decode_access_token_empty():
-    """Test that decode_access_token returns None for empty token."""
     result = User.decode_access_token("")
-    logger.debug("Decoding empty token")
     assert result is None
 
 
 def test_decode_access_token_random_string():
-    """Test that decode_access_token returns None for random string."""
     token = "randomstring123"
-    logger.debug(f"Decoding random string token: {token}")
     result = User.decode_access_token(token)
     assert result is None
 
@@ -143,18 +168,16 @@ def test_decode_access_token_random_string():
 # ======================================================================================
 
 def test_user_repr():
-    """Test the __repr__ method of the User model."""
     import uuid
     from datetime import datetime
 
     user = User(
         id=uuid.uuid4(),
-        username="testuser",
-        email="test@example.com",
+        username=fake.user_name(),
+        email=fake.email(),
         password_hash="fakehash",
         created_at=datetime.utcnow()
     )
 
     expected = f"<User(username={user.username}, email={user.email})>"
-    logger.debug(f"Testing __repr__: {repr(user)}")
     assert repr(user) == expected
