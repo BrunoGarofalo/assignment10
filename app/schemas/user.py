@@ -55,3 +55,12 @@ class UserLogin(BaseModel):
             }
         }
     )
+
+class UserRead(BaseModel):
+    """Schema for returning user details (without password hash)"""
+    id: UUID
+    username: str
+    email: EmailStr
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
