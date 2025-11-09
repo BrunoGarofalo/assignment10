@@ -6,6 +6,19 @@ from app.models.user import User
 
 fake = Faker()
 
+@pytest.fixture
+def registered_user(db_session):
+    """Register a user and return the data and instance."""
+    user_data = {
+        "username": fake.unique.user_name(),
+        "email": fake.unique.email(),
+        "password": "TestPass123"
+    }
+    user = User.register_user(db_session, user_data)
+    db_session.commit()
+    return db_session, user_data, user
+
+
 def test_password_hashing_and_verification(db_session, fake_user_data):
     """
     Test that password hashing and verification work correctly.
