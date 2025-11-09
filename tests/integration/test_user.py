@@ -4,6 +4,9 @@ from faker import Faker
 from sqlalchemy.orm import Session
 from app.models.user import User
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timedelta
+from jose import jwt
+from app.models.user import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 # Initialize Faker
 fake = Faker()
@@ -309,3 +312,43 @@ def test_partial_commit_user_remains(db_session):
     assert retrieved_user is not None
     assert retrieved_user.username == user1_data["username"]
     assert retrieved_user.email == user1_data["email"]
+
+
+def test_generate_access_token_returns_string():
+    """Test that generate_access_token returns a non-empty string"""
+    sub = "1234"
+    token = User.generate_access_token(sub)
+    assert isinstance(token, str)
+    assert len(token) > 0
+
+def test_generate_access_token_encodes_sub():
+    """Test that the token payload contains the correct 'sub' value"""
+    sub = "user_id_1"
+    token = User.generate_access_token(sub)
+    
+    # Decode without verification to inspect payload
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    assert payload["sub"] == sub
+
+def test_generate_access_token_default_expiration():
+    """Test that the token expiration is set to default time"""
+    sub = "user_id_2"
+    token = User.generate_access_token(sub)
+    
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    exp = datetime.utcfromtimestamp(payload["exp"])
+    now = datetime.utcnow()
+    delta_minutes = (exp - now).total_seconds() / 60
+    assert ACCESS_TOKEN_EXPIRE_MINUTES - 1 <= delta_minutes <= ACCESS_TOKEN_EXPIRE_MINUTES + 1  # allow 1 min leeway
+
+def test_generate_access_token_custom_expiration():
+    """Test that a custom expiration delta works"""
+    sub = "user_id_3"
+    custom_delta = timedelta(minutes=10)
+    token = User.generate_access_token(sub, expires_delta=custom_delta)
+    
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    exp = datetime.utcfromtimestamp(payload["exp"])
+    now = datetime.utcnow()
+    delta_minutes = (exp - now).total_seconds() / 60
+    assert 9 <= delta_minutes <= 11  # allow 1 min leeway for execution time
