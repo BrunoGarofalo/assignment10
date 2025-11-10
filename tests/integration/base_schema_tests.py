@@ -9,7 +9,7 @@ from app.schemas.base import UserBase, PasswordMixin, UserCreate, UserLogin, Use
 # =====================================
 
 def test_userbase_valid_data():
-    """Validate that UserBase accepts correct email and username."""
+    """Validate that UserBase accepts correct email and username"""
     data = {"email": "test@example.com", "username": "testuser"}
     user = UserBase(**data)
     assert user.email == "test@example.com"
@@ -17,7 +17,7 @@ def test_userbase_valid_data():
 
 
 def test_userbase_invalid_email():
-    """Ensure UserBase raises ValidationError for invalid email format."""
+    """Ensure UserBase raises ValidationError for invalid email format"""
     data = {"email": "invalid-email", "username": "testuser"}
     with pytest.raises(ValidationError) as exc_info:
         UserBase(**data)
@@ -30,7 +30,6 @@ def test_userbase_missing_fields():
     with pytest.raises(ValidationError) as exc_info:
         UserBase(**data)
 
-    # Check that the error mentions the missing required fields
     assert "Field required" in str(exc_info.value)
     assert "email" in str(exc_info.value) or "username" in str(exc_info.value)
 
@@ -57,7 +56,7 @@ def test_password_mixin_valid_password():
     ]
 )
 def test_password_mixin_invalid_passwords(password, error_msg):
-    """Check that PasswordMixin raises errors for invalid passwords."""
+    """Check that PasswordMixin raises errors for invalid passwords"""
     data = {"password": password}
     with pytest.raises((ValueError, ValidationError)) as exc_info:
         PasswordMixin(**data)
@@ -84,7 +83,23 @@ def test_usercreate_invalid_password():
         UserCreate(**data)
     assert "Password must be at least 6 characters long" in str(exc_info.value)
 
-
+@pytest.mark.parametrize(
+    "username,error_msg",
+    [
+        ("ab", "ensure this value has at least 3 characters"),      # Too short
+        ("a" * 51, "ensure this value has at most 50 characters"),   # Too long
+    ]
+)
+def test_usercreate_username_length(username, error_msg):
+    """Test that UserCreate rejects usernames that are too short or too long."""
+    data = {
+        "username": username,
+        "email": "test@example.com",
+        "password": "ValidPass123"
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        UserCreate(**data)
+    assert error_msg in str(exc_info.value)
 # =====================================
 # UserLogin Tests
 # =====================================
