@@ -38,10 +38,12 @@ class User(Base):
 
     @staticmethod
     def hash_password(password: str) -> str:
+        """has the password"""
         return pwd_context.hash(password)
 
     @staticmethod
     def generate_access_token(sub: str, expires_delta: Optional[timedelta] = None) -> str:
+        """Generates JWT access token, used primarily for authentication and authorization"""
         payload = {"sub": sub}
         expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
         payload["exp"] = expire
@@ -49,6 +51,7 @@ class User(Base):
 
     @staticmethod
     def decode_access_token(token: str) -> Optional[uuid.UUID]:
+        """Validates the JWT token and extracts the user ID"""
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             user_id = payload.get("sub")
@@ -58,6 +61,7 @@ class User(Base):
 
     @classmethod
     def register_user(cls, db, user_data: Dict[str, Any]) -> "User":
+        """Registers new user into DB"""
         password = user_data.get("password", "")
         if len(password) < 6:
             raise ValueError("Password must be at least 6 characters long")
@@ -84,6 +88,7 @@ class User(Base):
 
     @classmethod
     def authenticate_user(cls, db, username_or_email: str, password: str) -> Optional[Dict[str, Any]]:
+        """Authenticates user"""
         user = db.query(User).filter(
             (User.username == username_or_email) | (User.email == username_or_email)
         ).first()
@@ -98,4 +103,12 @@ class User(Base):
             user=user_response
         )
         return token.model_dump()
+    
+    @classmethod
+    def verify_token(cls, token: str) -> Optional[uuid.UUID]:
+        """Verifies a JWT access token and return the corresponding user ID if valid"""
+        try:
+            return cls.decode_access_token(token)
+        except Exception as e:
+            return None
 
