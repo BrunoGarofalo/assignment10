@@ -59,7 +59,7 @@ To run a single test file:
 pytest tests/integration/test_user.py
 ```
 
-4. Running the model:
+## Running the model:
 - Start Docker with docker compose up or create the containers with docker compose up --build if they are not available yet
 - go to localhost:8000 to user the model 
 
