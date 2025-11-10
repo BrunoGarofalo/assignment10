@@ -19,14 +19,6 @@ class UserRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class UserCreate(BaseModel):
-    """Schema for creating a new user"""
-    username: str = Field(..., min_length=3, max_length=50, example="mikehegar")
-    email: EmailStr = Field(..., example="mike.hegar@example.com")
-    password: str = Field(..., min_length=6, max_length=128, example="SecurePass123")
-
-    model_config = ConfigDict()
-
 # --------------------------
 # Schema for authentication token response
 # --------------------------
