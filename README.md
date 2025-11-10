@@ -61,5 +61,8 @@ pytest tests/integration/test_user.py
 
 ## Running the model:
 - Start Docker with docker compose up or create the containers with docker compose up --build if they are not available yet
-- go to localhost:8000 to user the model 
+- go to localhost:8000 to user the model
+
+## Docker hub repository:
+- https://hub.docker.com/repository/docker/legioxi/assignment10/general
 
