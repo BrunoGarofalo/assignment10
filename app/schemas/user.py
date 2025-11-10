@@ -1,24 +1,41 @@
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
-class UserResponse(BaseModel):
-    """Schema for user response data"""
+
+# ================================
+# User Schemas
+# ================================
+
+
+class UserRead(BaseModel):
+    """Schema for getting user details without password hash"""
     id: UUID
     username: str
     email: EmailStr
     created_at: datetime
 
 
-    model_config = ConfigDict(from_attributes=True)  # Enable mapping from ORM objects
+    model_config = ConfigDict(from_attributes=True)
 
+class UserCreate(BaseModel):
+    """Schema for creating a new user"""
+    username: str = Field(..., min_length=3, max_length=50, example="mikehegar")
+    email: EmailStr = Field(..., example="mike.hegar@example.com")
+    password: str = Field(..., min_length=6, max_length=128, example="SecurePass123")
+
+    model_config = ConfigDict()
+
+# --------------------------
+# Schema for authentication token response
+# --------------------------
 
 class Token(BaseModel):
     """Schema for authentication token response"""
     access_token: str
     token_type: str = "bearer"
-    user: UserResponse
+    user: UserRead
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -27,8 +44,8 @@ class Token(BaseModel):
                 "token_type": "bearer",
                 "user": {
                     "id": "123e4567-e89b-12d3-a456-426614174000",
-                    "username": "johndoe",
-                    "email": "john.doe@example.com",
+                    "username": "mikehegar",
+                    "email": "mike.hegar@example.com",
                     "is_active": True,
                     "created_at": "2025-01-01T00:00:00",
                 },
@@ -41,7 +58,9 @@ class TokenData(BaseModel):
     """Schema for JWT token payload"""
     user_id: Optional[UUID] = None
 
-
+# --------------------------
+# Schema for user login
+# --------------------------
 class UserLogin(BaseModel):
     """Schema for user login"""
     username: str
@@ -50,17 +69,8 @@ class UserLogin(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "username": "johndoe123",
+                "username": "mikehegar123",
                 "password": "SecurePass123",
             }
         }
     )
-
-class UserRead(BaseModel):
-    """Schema for returning user details (without password hash)"""
-    id: UUID
-    username: str
-    email: EmailStr
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

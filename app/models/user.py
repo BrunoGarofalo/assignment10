@@ -10,7 +10,7 @@ from jose import jwt, JWTError
 from pydantic import ValidationError
 
 from app.schemas.base import UserCreate
-from app.schemas.user import UserResponse, Token
+from app.schemas.user import UserRead, Token
 
 Base = declarative_base()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -96,7 +96,7 @@ class User(Base):
         if not user or not user.verify_password(password):
             return None
 
-        user_response = UserResponse.model_validate(user)
+        user_response = UserRead.model_validate(user)
         token = Token(
             access_token=cls.generate_access_token(str(user.id)),
             token_type="bearer",

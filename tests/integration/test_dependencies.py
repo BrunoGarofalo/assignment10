@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch, ANY
 from fastapi import HTTPException, status
 from app.auth.dependencies import get_current_user, get_current_active_user
-from app.schemas.user import UserResponse
+from app.schemas.user import UserRead
 from app.models.user import User
 from uuid import uuid4
 from datetime import datetime
@@ -43,7 +43,7 @@ def test_get_current_user_valid_token_existing_user(mock_db, mock_verify_token):
 
     user_response = get_current_user(db=mock_db, token="validtoken")
 
-    assert isinstance(user_response, UserResponse)
+    assert isinstance(user_response, UserRead)
     assert user_response.id == sample_user.id
     assert user_response.username == sample_user.username
     assert user_response.email == sample_user.email

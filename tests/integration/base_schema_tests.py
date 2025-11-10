@@ -25,7 +25,7 @@ def test_userbase_invalid_email():
 
 
 def test_userbase_missing_fields():
-    """Ensure UserBase raises ValidationError if required fields are missing."""
+    """Ensure UserBase raises ValidationError if required fields are missing"""
     data = {}
     with pytest.raises(ValidationError) as exc_info:
         UserBase(**data)
@@ -69,7 +69,7 @@ def test_password_mixin_invalid_passwords(password, error_msg):
 # =====================================
 
 def test_usercreate_valid():
-    """Validate that UserCreate schema accepts valid user creation data."""
+    """Validate that UserCreate schema accepts valid user creation data"""
     data = {"email": "test@example.com", "username": "testuser", "password": "Password123"}
     user = UserCreate(**data)
     assert user.email == "test@example.com"
@@ -78,7 +78,7 @@ def test_usercreate_valid():
 
 
 def test_usercreate_invalid_password():
-    """Ensure UserCreate raises ValueError for invalid password."""
+    """Ensure UserCreate raises ValueError for invalid password"""
     data = {"email": "test@example.com", "username": "testuser", "password": "weak"}
     with pytest.raises(ValueError) as exc_info:
         UserCreate(**data)
